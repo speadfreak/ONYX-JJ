@@ -87,9 +87,20 @@ Add these in **Environment** (names match `.env.example`):
 | Key | Value | Notes |
 |---|---|---|
 | `DATABASE_URL` | (A-a) the Internal Database URL from step 2 · (A-b) `file:/var/data/onyx.db` | |
+| `HOSTNAME` | `0.0.0.0` | **REQUIRED — see warning below.** |
 | `ADMIN_SESSION_SECRET` | `openssl rand -base64 48` output | **Generate a NEW one — never reuse the sandbox value.** Min 32 chars. |
 | `ADMIN_EMAIL` | your real email | Owner bootstrap (first boot only) |
 | `ADMIN_PASSWORD` | a **NEW** long password | **Do NOT reuse any sandbox/dev password** — generate something new and long. |
+
+> ⚠️ **`HOSTNAME=0.0.0.0` is not optional on Render.** Render runs your
+> service on Kubernetes, which injects `HOSTNAME=<pod-name>` (e.g.
+> `srv-…-6c8b669fdb-bhr4r`) into every container. The Next.js standalone
+> `server.js` uses that value as its **bind address** — so the app listens
+> only on the pod-hostname interface, Render's router can't reach it, and
+> every request 502s forever **even though the logs show a clean,
+> successful startup**. Setting this var forces `0.0.0.0` (all interfaces).
+> The `start` command in step 5 also sets it inline, so the var alone is
+> enough if you keep the default command.
 
 Optional: `GROQ_API_KEY` (only if you later swap Ask JJ to Groq),
 `METALS_API_KEY` (only for a real XAU/USD feed). Do **not** set
@@ -103,7 +114,7 @@ Node-native so Render needs no bun install):
 **Decision A-a (Postgres):**
 ```text
 Build:  npm install && npx prisma db push && npm run build
-Start:  node .next/standalone/server.js
+Start:  HOSTNAME=0.0.0.0 node .next/standalone/server.js
 ```
 > After switching `provider` to `"postgresql"`, `db push` is acceptable to
 > start, but switch to baselined migrations: run `npx prisma migrate dev
@@ -115,7 +126,7 @@ Start:  node .next/standalone/server.js
 1. In `prisma/schema.prisma` the provider stays `"sqlite"`, but `DATABASE_URL`
    must be an **absolute path on the disk**: `file:/var/data/onyx.db`
 2. Web Service → **Disks** → **Add disk** → mount path `/var/data`, ≥1GB
-3. Same build/start commands as above.
+3. Same build/start commands as above (`Start:` already pins `HOSTNAME=0.0.0.0`).
 
 ### 6. (Decision A-a) Move content from sandbox to Postgres
 
@@ -136,9 +147,22 @@ The sandbox SQLite DB has your seeded content + admin accounts. Two options:
 
 ### 7. Health check & deploy
 
-- **Health Check Path**: `/api` (returns 200 JSON — simple and auth-free)
+- **Health Check Path**: `/api` (returns `{"message":"Hello, world!"}` —
+  static JSON, auth-free, **no database query**, responds in milliseconds —
+  it can never time out on a slow or exhausted Postgres pool)
 - Click **Create Web Service** → first build runs (~2–4 min)
-- Render detects the `PORT` env var automatically — `server.js` honors it.
+- Render detects the `PORT` env var automatically — `server.js` reads
+  `process.env.PORT` (`parseInt(PORT, 10) || 3000`), nothing hardcoded.
+
+**If you still see 502 after a healthy-looking deploy:** check the log line
+under `▲ Next.js`. If `Local:`/`Network:` shows the pod hostname
+(`http://srv-…-bhr4r:10000`) instead of `0.0.0.0`, the `HOSTNAME` env var
+is missing → add `HOSTNAME=0.0.0.0` in Environment and redeploy. Verify
+from the service's Shell tab (or any pod terminal):
+
+```bash
+curl -s -m 5 "http://0.0.0.0:${PORT:-10000}/api"   # expect {"message":"Hello, world!"}
+```
 
 ### 8. First-boot verification (do these in order)
 
