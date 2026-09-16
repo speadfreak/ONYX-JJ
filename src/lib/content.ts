@@ -221,10 +221,34 @@ export async function getNextProjectSlug(slug: string): Promise<string> {
   return list[(idx + 1) % list.length]?.slug ?? slug;
 }
 
+/**
+ * Home hero stats must be { to: number, suffix?, label }. Legacy/buggy rows
+ * (Task 12: the admin API once stored the project-shaped { value, label })
+ * carry no usable number — those entries are dropped, and if NOTHING usable
+ * survives we fall back to the bundled defaults instead of rendering zeros.
+ */
+function normalizeHomeStats(v: unknown): { to: number; suffix?: string; label: string }[] {
+  if (!Array.isArray(v)) return [];
+  const out: { to: number; suffix?: string; label: string }[] = [];
+  for (const s of v) {
+    if (typeof s !== "object" || s === null) continue;
+    const rec = s as Record<string, unknown>;
+    const label = typeof rec.label === "string" ? rec.label.trim().slice(0, 80) : "";
+    if (!label) continue;
+    const n = Number(rec.to);
+    if (!Number.isFinite(n)) continue;
+    const suffix =
+      typeof rec.suffix === "string" && rec.suffix.trim() ? rec.suffix.trim().slice(0, 8) : undefined;
+    out.push({ to: Math.max(0, Math.min(999_999, Math.round(n))), label, ...(suffix ? { suffix } : {}) });
+  }
+  return out;
+}
+
 export async function getHomeContent(): Promise<HomeContentData> {
   try {
     const row = await db.homeContent.findUnique({ where: { id: "home" } });
     if (!row) return DEFAULT_HOME;
+    const stats = normalizeHomeStats(parseJson<unknown>(row.stats, null));
     return {
       kicker: row.kicker || DEFAULT_HOME.kicker,
       headlineLine1: row.headlineLine1 || DEFAULT_HOME.headlineLine1,
@@ -235,7 +259,7 @@ export async function getHomeContent(): Promise<HomeContentData> {
       ctaPrimaryHref: row.ctaPrimaryHref || DEFAULT_HOME.ctaPrimaryHref,
       ctaSecondaryLabel: row.ctaSecondaryLabel || DEFAULT_HOME.ctaSecondaryLabel,
       ctaSecondaryHref: row.ctaSecondaryHref || DEFAULT_HOME.ctaSecondaryHref,
-      stats: parseJson<{ to: number; suffix?: string; label: string }[]>(row.stats, DEFAULT_HOME.stats),
+      stats: stats.length ? stats : DEFAULT_HOME.stats,
       featuredHeading: row.featuredHeading || DEFAULT_HOME.featuredHeading,
       featuredSubheading: row.featuredSubheading || DEFAULT_HOME.featuredSubheading,
     };

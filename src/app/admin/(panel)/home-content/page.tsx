@@ -77,7 +77,17 @@ export default function AdminHomeContentPage() {
             featuredSubheading: c.featuredSubheading,
           });
           setRoles(parse<string[]>(c.roles, []));
-          setStats(parse<Stat[]>(c.stats, []));
+          // Normalize on load: legacy rows may hold project-shaped stats
+          // (no `to`) or string numbers — coerce so the inputs stay controlled.
+          setStats(
+            parse<unknown[]>(c.stats, [])
+              .filter((s): s is Record<string, unknown> => typeof s === "object" && s !== null)
+              .map((s) => ({
+                to: Number(s.to) || 0,
+                suffix: typeof s.suffix === "string" && s.suffix ? s.suffix : undefined,
+                label: typeof s.label === "string" ? s.label : "",
+              }))
+          );
         }
       } finally {
         setLoading(false);

@@ -33,6 +33,28 @@ export function statsArray(v: unknown): { value: string; label: string }[] {
 export function asStats(v: unknown): string {
   return JSON.stringify(statsArray(v));
 }
+/**
+ * Home hero stats have their OWN shape — { to: number, suffix?, label } —
+ * unlike project stat bars ({ value, label }). Never mix the two: this
+ * normalizer used to be missing and the project-shaped one silently
+ * stripped every `to`, zeroing the homepage counter strip (Task 12).
+ */
+export function homeStatsArray(v: unknown): { to: number; suffix?: string; label: string }[] {
+  if (!Array.isArray(v)) return [];
+  return v
+    .filter((x): x is Record<string, unknown> => typeof x === "object" && x !== null)
+    .map((s) => {
+      const n = Math.round(Number(s.to));
+      const to = Number.isFinite(n) ? Math.max(0, Math.min(999_999, n)) : 0;
+      const label = asString(s.label).slice(0, 80);
+      const suffix = asString(s.suffix).slice(0, 8);
+      return { to, label, ...(suffix ? { suffix } : {}) };
+    })
+    .filter((s) => s.label);
+}
+export function asHomeStats(v: unknown): string {
+  return JSON.stringify(homeStatsArray(v));
+}
 export function slugify(input: string): string {
   return input
     .toLowerCase()

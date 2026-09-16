@@ -1,4 +1,4 @@
-import { db, ok, bad, asString, asStringArray, asStats, touched } from "@/lib/admin-api";
+import { db, ok, bad, asString, asStringArray, asHomeStats, touched } from "@/lib/admin-api";
 import { requireAdmin } from "@/lib/auth";
 
 /** GET /api/admin/home-content — the singleton home content row. */
@@ -43,7 +43,7 @@ export async function PUT(req: Request) {
   if ("ctaPrimaryHref" in body) data.ctaPrimaryHref = asString(body.ctaPrimaryHref).slice(0, MAX.ctaHref);
   if ("ctaSecondaryLabel" in body) data.ctaSecondaryLabel = asString(body.ctaSecondaryLabel).slice(0, MAX.ctaLabel);
   if ("ctaSecondaryHref" in body) data.ctaSecondaryHref = asString(body.ctaSecondaryHref).slice(0, MAX.ctaHref);
-  if ("stats" in body) data.stats = asStats(body.stats);
+  if ("stats" in body) data.stats = asHomeStats(body.stats);
   if ("featuredHeading" in body) data.featuredHeading = asString(body.featuredHeading).slice(0, MAX.featuredHeading);
   if ("featuredSubheading" in body) data.featuredSubheading = asString(body.featuredSubheading).slice(0, MAX.featuredSub);
 
