@@ -1,10 +1,32 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { AdminLoginForm } from "@/components/admin/login-form";
 
 export const metadata: Metadata = {
   title: { absolute: "Admin Access — JJ ONYX" },
   robots: { index: false, follow: false },
 };
+
+/**
+ * Suspense fallback for the form card — mirrors the form's layout so the
+ * hand-off to <AdminLoginForm /> (which reads ?from/?invited via
+ * useSearchParams) is visually seamless.
+ */
+function LoginFallback() {
+  return (
+    <div className="space-y-5" aria-hidden>
+      <div className="space-y-2">
+        <div className="h-3 w-14 rounded bg-white/5" />
+        <div className="h-12 rounded-md border border-white/10 bg-onyx-950/60" />
+      </div>
+      <div className="space-y-2">
+        <div className="h-3 w-20 rounded bg-white/5" />
+        <div className="h-12 rounded-md border border-white/10 bg-onyx-950/60" />
+      </div>
+      <div className="h-12 w-full animate-pulse rounded-md bg-gold/20" />
+    </div>
+  );
+}
 
 /** Private single-admin login — deliberately NOT linked from site navigation. */
 export default function AdminLoginPage() {
@@ -36,7 +58,9 @@ export default function AdminLoginPage() {
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-onyx-900/60 p-7 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.8)] backdrop-blur-xl sm:p-9">
-          <AdminLoginForm />
+          <Suspense fallback={<LoginFallback />}>
+            <AdminLoginForm />
+          </Suspense>
         </div>
 
         <p className="mt-7 text-center text-xs leading-relaxed text-muted-foreground">
