@@ -95,9 +95,40 @@ export default function AdminSettingsPage() {
       toast({ title: "Settings saved", description: "Public site reflects this immediately." });
     } catch (e) {
       toast({ title: "Save failed", description: (e as Error).message, variant: "destructive" });
+      throw e;
     } finally {
       setSaving(false);
     }
+  };
+
+  /**
+   * Asset-manager persistence (Task 10): uploads apply THEMSELVES with a
+   * single-field PUT instead of waiting for the global Save button. This is
+   * the fix for "I replace the pic and it shows only the name" — the upload
+   * used to succeed while the new URL sat in local state, silently lost on
+   * the next page load. A single-field PUT (the API supports partial updates)
+   * also means two quick uploads can never overwrite each other.
+   */
+  const applyAsset = async (field: keyof SettingsRow, url: string) => {
+    const res = await fetch("/api/admin/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [field]: url }),
+    });
+    const data = (await res.json()) as { ok: boolean; error?: string; settings?: SettingsRow };
+    if (!res.ok || !data.ok || !data.settings) throw new Error(data.error ?? "Apply failed");
+    setS(data.settings);
+    toast({
+      title:
+        field === "profileImage"
+          ? "Profile photo applied"
+          : field === "heroPoster"
+            ? "Hero poster applied"
+            : field === "heroVideo"
+              ? "Hero video applied"
+              : "Ambient audio applied",
+      description: "Live on the site — no save needed.",
+    });
   };
 
   const regenerate = async () => {
@@ -125,7 +156,7 @@ export default function AdminSettingsPage() {
         title="Site settings"
         description="LIVE badge, feature toggles, social links, managed assets and the /now page."
         actions={
-          <SaveButton pending={saving} onClick={() => save()}>
+          <SaveButton pending={saving} onClick={() => void save().catch(() => {})}>
             <Save className="h-4 w-4" /> Save settings
           </SaveButton>
         }
@@ -194,17 +225,41 @@ export default function AdminSettingsPage() {
         <Panel>
           <p className="mb-5 font-mono text-[10px] uppercase tracking-[0.3em] text-gold/80">Asset manager</p>
           <div className="space-y-7">
-            <Field label="Profile photo" hint="used on hero, about & contact">
-              <AssetUpload kind="profile" value={s.profileImage} onChange={(url) => setS({ ...s, profileImage: url })} maxWidth={160} />
+            <Field label="Profile photo" hint="used on hero, about & contact — applies instantly">
+              <AssetUpload
+                kind="profile"
+                value={s.profileImage}
+                onChange={(url) => setS((prev) => (prev ? { ...prev, profileImage: url } : prev))}
+                onUploaded={(url) => applyAsset("profileImage", url)}
+                maxWidth={160}
+              />
             </Field>
-            <Field label="Ambient audio track" hint="mp3 ≤10MB">
-              <AssetUpload kind="ambient" preview="audio" value={s.ambientAudio} onChange={(url) => setS({ ...s, ambientAudio: url })} />
+            <Field label="Ambient audio track" hint="mp3 ≤10MB · applies instantly">
+              <AssetUpload
+                kind="ambient"
+                preview="audio"
+                value={s.ambientAudio}
+                onChange={(url) => setS((prev) => (prev ? { ...prev, ambientAudio: url } : prev))}
+                onUploaded={(url) => applyAsset("ambientAudio", url)}
+              />
             </Field>
-            <Field label="Hero video loop" hint="mp4/webm ≤15MB · desktop only">
-              <AssetUpload kind="video" preview="video" value={s.heroVideo} onChange={(url) => setS({ ...s, heroVideo: url })} />
+            <Field label="Hero video loop" hint="mp4/webm ≤15MB · desktop only · applies instantly">
+              <AssetUpload
+                kind="video"
+                preview="video"
+                value={s.heroVideo}
+                onChange={(url) => setS((prev) => (prev ? { ...prev, heroVideo: url } : prev))}
+                onUploaded={(url) => applyAsset("heroVideo", url)}
+              />
             </Field>
-            <Field label="Hero poster" hint="fallback still for mobile / reduced-motion">
-              <AssetUpload kind="poster" value={s.heroPoster} onChange={(url) => setS({ ...s, heroPoster: url })} maxWidth={220} />
+            <Field label="Hero poster" hint="fallback still for mobile / reduced-motion · applies instantly">
+              <AssetUpload
+                kind="poster"
+                value={s.heroPoster}
+                onChange={(url) => setS((prev) => (prev ? { ...prev, heroPoster: url } : prev))}
+                onUploaded={(url) => applyAsset("heroPoster", url)}
+                maxWidth={220}
+              />
             </Field>
           </div>
         </Panel>
@@ -304,7 +359,7 @@ export default function AdminSettingsPage() {
 
         <SaveButton
           pending={saving}
-          onClick={() => save()}
+          onClick={() => void save().catch(() => {})}
           className="w-full sm:w-auto"
         >
           <Save className="h-4 w-4" /> Save settings

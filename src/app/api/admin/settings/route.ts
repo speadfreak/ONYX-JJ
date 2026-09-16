@@ -13,6 +13,73 @@ const ASSET_FIELDS = ["profileImage", "ambientAudio", "heroVideo", "heroPoster"]
 
 type AssetField = (typeof ASSET_FIELDS)[number];
 
+/** Bundled fallbacks — keep in sync with the SiteSetting column defaults. */
+const ASSET_DEFAULTS: Record<AssetField, string> = {
+  profileImage: "/images/jj-profile.jpg",
+  ambientAudio: "/audio/ambient-theme.mp3",
+  heroVideo: "",
+  heroPoster: "/images/hero-bg.jpg",
+};
+
+/**
+ * Self-healing dead asset references (Task 10):
+ *
+ * History left production settings pointing at /uploads/… paths whose files
+ * were destroyed by Render's ephemeral filesystem — every render of the
+ * admin form (and the public hero) then showed a broken image / placeholder
+ * even after the DB-backed upload system shipped. Rather than asking JJ to
+ * hand-edit rows, any asset field that references:
+ *   • a legacy /uploads/… path with no DB row carrying real bytes, or
+ *   • an /api/assets/<id> whose row is missing or byteless
+ * is healed back to its bundled default on GET. Healing only ever fires in
+ * the admin context, is idempotent, and deletes the stale manifest rows it
+ * orphaned. Local dev uploads with real on-disk+DB bytes are never touched.
+ */
+async function assetRefIsDead(url: string): Promise<boolean> {
+  if (!url.startsWith("/uploads/") && !url.startsWith("/api/assets/")) return false;
+  const row = await db.asset.findFirst({
+    where: { url },
+    select: { data: true },
+  });
+  if (!row) return true;
+  const bytes = row.data as unknown as Uint8Array | null;
+  return !bytes || bytes.byteLength === 0;
+}
+
+async function healDeadAssetRefs(settings: {
+  profileImage: string;
+  ambientAudio: string;
+  heroVideo: string;
+  heroPoster: string;
+}): Promise<{ settings: typeof settings; healed: string[] }> {
+  const patched: Partial<Record<AssetField, string>> = {};
+  const healed: string[] = [];
+
+  for (const field of ASSET_FIELDS) {
+    const url = settings[field];
+    if (!url || !(await assetRefIsDead(url))) continue;
+    patched[field] = ASSET_DEFAULTS[field];
+    healed.push(field);
+    await db.asset.deleteMany({ where: { url } }).catch(() => undefined);
+  }
+
+  if (!healed.length) return { settings, healed };
+
+  const updated = await db.siteSetting.update({
+    where: { id: "site" },
+    data: patched as never,
+  });
+  await db.activityLog
+    .create({
+      data: {
+        action: "Healed dead asset references",
+        detail: `${healed.join(", ")} → bundled defaults (files no longer exist)`,
+      },
+    })
+    .catch(() => undefined);
+  return { settings: updated, healed };
+}
+
 async function cleanupReplacedAssets(oldValues: Record<AssetField, string>, newValues: Record<AssetField, string>) {
   for (const field of ASSET_FIELDS) {
     const oldUrl = oldValues[field];
@@ -31,11 +98,17 @@ async function cleanupReplacedAssets(oldValues: Record<AssetField, string>, newV
   }
 }
 
-/** GET /api/admin/settings — the singleton site settings row. */
+/** GET /api/admin/settings — the singleton site settings row, self-healed. */
 export async function GET() {
   await requireAdmin();
-  const settings = await db.siteSetting.findUnique({ where: { id: "site" } });
-  return ok({ settings });
+  const current = await db.siteSetting.findUnique({ where: { id: "site" } });
+  if (!current) return bad("Settings row missing — seed the database.", 500);
+
+  const { settings, healed } = await healDeadAssetRefs(current).catch((e) => {
+    console.error("[settings] asset heal:", e);
+    return { settings: current, healed: [] as string[] };
+  });
+  return ok({ settings, healed });
 }
 
 /** PUT /api/admin/settings — update any subset. */

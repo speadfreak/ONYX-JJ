@@ -74,3 +74,6 @@ server.log
 
 # Generated dual-provider Prisma clients for the one-off migration script
 /generated/
+
+# local sandbox drop-folder (user-uploaded screenshots etc.) — never ship
+upload/
