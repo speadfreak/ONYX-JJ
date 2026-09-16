@@ -20,6 +20,7 @@ export async function GET() {
       profileImage: s.profileImage,
       heroVideo: s.heroVideo,
       heroPoster: s.heroPoster,
+      availabilityStatus: s.availabilityStatus ?? "",
     });
   } catch {
     return NextResponse.json({ ok: false, error: "Settings unavailable." }, { status: 500 });

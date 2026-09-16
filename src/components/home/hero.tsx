@@ -45,7 +45,14 @@ export interface HeroProps {
     | "ctaSecondaryHref"
   >;
   /** Managed media from /admin/settings */
-  media: { videoEnabled: boolean; videoSrc: string; poster: string };
+  media: {
+    videoEnabled: boolean;
+    videoSrc: string;
+    poster: string;
+    /** true once JJ uploads his own hero poster — it must then actually
+     * display instead of being covered by the bundled placeholder loop */
+    posterIsCustom?: boolean;
+  };
   profileImage: string;
   live: { status: boolean; url: string };
 }
@@ -140,7 +147,13 @@ export function Hero({ content, media, profileImage, live }: HeroProps) {
     damping: 18,
   });
 
-  const showVideo = media.videoEnabled && !isMobile && !reduce;
+  /* Video plays only when enabled AND (a custom video exists OR no custom
+     poster was uploaded). Rationale: if JJ sets a custom poster with no
+     custom loop, the poster is the art he chose — the bundled placeholder
+     loop must not cover it (that was the "hero poster never appears" bug:
+     desktop played the placeholder forever and the uploaded poster 404'd). */
+  const showVideo =
+    media.videoEnabled && !isMobile && !reduce && (media.videoSrc ? true : !media.posterIsCustom);
 
   /* ── Easter egg: shared reward handler (3D gem + SVG fallbacks) ─────
      Fires the WebAudio chime (mute-aware), flips the accent to the secret

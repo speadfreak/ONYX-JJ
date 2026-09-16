@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { mkdir, writeFile } from "fs/promises";
 import path from "path";
+import { randomUUID } from "crypto";
 import { db } from "@/lib/db";
 import { requireAdmin, logActivity } from "@/lib/auth";
 
@@ -9,12 +9,17 @@ import { requireAdmin, logActivity } from "@/lib/auth";
  *   images: image/jpeg|png|webp   ≤ 5MB
  *   audio:  audio/mpeg            ≤ 10MB
  *   video:  video/mp4|webm        ≤ 15MB
- * Files land in /public/uploads (served statically) and are recorded in the
- * Asset manifest. Body: { file: File, kind: "profile"|"ambient"|"video"|"poster"|"cover"|"photo" }
+ * Bytes are stored IN THE DATABASE (Asset.data — Postgres bytea / SQLite
+ * BLOB) and served via GET /api/assets/[id]. Disk writes broke production:
+ * Render's filesystem is ephemeral (wiped on every deploy/restart) and the
+ * standalone server's static file set is fixed at boot, so anything written
+ * to /public/uploads at runtime 404'd — uploaded profile pics and hero
+ * posters silently never displayed. Body:
+ * { file: File, kind: "profile"|"ambient"|"video"|"poster"|"cover"|"photo" }
  *
  * NOTE (Phase 5): this file was restored from git history — it had been
  * silently deleted by a bulk auto-commit (0963a47), which made every admin
- * asset upload 404. Restore-quality fix: verbatim recovery, no rewrites.
+ * asset upload 404.
  */
 
 const RULES: Record<string, { mimes: string[]; exts: string[]; maxBytes: number; label: string }> = {
@@ -101,16 +106,14 @@ export async function POST(req: Request) {
       );
     }
 
-    // Safe filename: kind + timestamp + sanitized extension
+    // DB-backed storage: durable across Render redeploys/restarts, served
+    // through /api/assets/[id] with the same URL semantics as before.
     const safeName = `${kind}-${Date.now()}${ext}`;
-    const dir = path.join(process.cwd(), "public", "uploads");
-    await mkdir(dir, { recursive: true }); // self-healing if the dir is ever missing
-    const bytes = Buffer.from(await file.arrayBuffer());
-    await writeFile(path.join(dir, safeName), bytes);
-
-    const url = `/uploads/${safeName}`;
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const id = randomUUID();
+    const url = `/api/assets/${id}`;
     const asset = await db.asset.create({
-      data: { kind, filename: safeName, url, mime: file.type, size: file.size },
+      data: { id, kind, filename: safeName, url, mime: file.type, size: file.size, data: bytes },
     });
     await logActivity("Uploaded asset", `${kind} · ${safeName} (${Math.round(file.size / 1024)}KB)`);
 

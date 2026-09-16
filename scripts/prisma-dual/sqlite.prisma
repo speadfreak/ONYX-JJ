@@ -135,6 +135,9 @@ model SiteSetting {
   // "Watching USD strength into CPI this week") shown near the Market Pulse
   // widget so the live data feels hand-picked, not automated.
   marketBias   String    @default("")
+  // Footer trust chip — editable availability line (e.g. "Available for
+  // select projects" / "Not currently taking new projects").
+  availabilityStatus String @default("")
   updatedAt    DateTime  @updatedAt
 }
 
@@ -146,6 +149,12 @@ model Asset {
   url       String
   mime      String
   size      Int
+  // File bytes stored IN the database (Postgres bytea / SQLite BLOB).
+  // Render's container filesystem is ephemeral — files written to disk at
+  // runtime vanish on every deploy/restart, and the standalone server's
+  // static file set is fixed at boot — so disk-based /uploads 404 in
+  // production. DB-backed bytes are durable and served via /api/assets/[id].
+  data      Bytes
   createdAt DateTime @default(now())
 }
 

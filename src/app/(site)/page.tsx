@@ -35,6 +35,7 @@ export default async function HomePage() {
           videoEnabled: settings.videoEnabled,
           videoSrc: settings.heroVideo,
           poster: settings.heroPoster,
+          posterIsCustom: settings.heroPoster !== "/images/hero-bg.jpg",
         }}
         profileImage={settings.profileImage}
         live={{ status: settings.liveStatus, url: settings.liveUrl }}

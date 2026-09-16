@@ -33,6 +33,7 @@ interface SettingsRow {
   heroPoster: string;
   nowContent: string;
   nowUpdatedAt: string | null;
+  availabilityStatus?: string;
 }
 
 function parse<T>(raw: string | null | undefined, fallback: T): T {
@@ -84,6 +85,7 @@ export default function AdminSettingsPage() {
           ambientAudio: s.ambientAudio,
           heroVideo: s.heroVideo,
           heroPoster: s.heroPoster,
+          availabilityStatus: s.availabilityStatus ?? "",
           ...extra,
         }),
       });
@@ -168,6 +170,24 @@ export default function AdminSettingsPage() {
               onCheckedChange={(v) => setS({ ...s, videoEnabled: v })}
             />
           </div>
+        </Panel>
+
+        {/* Availability chip (footer trust strip) */}
+        <Panel>
+          <p className="mb-5 font-mono text-[10px] uppercase tracking-[0.3em] text-gold/80">Availability — footer chip</p>
+          <Field
+            label="Status line"
+            hint="shown as a quiet chip in the footer · e.g. “Available for select projects” or “Not currently taking new projects” — leave empty to hide"
+            htmlFor="s-availability"
+          >
+            <AdminInput
+              id="s-availability"
+              placeholder="Available for select projects"
+              maxLength={120}
+              value={s.availabilityStatus ?? ""}
+              onChange={(e) => setS({ ...s, availabilityStatus: e.target.value })}
+            />
+          </Field>
         </Panel>
 
         {/* Asset manager */}

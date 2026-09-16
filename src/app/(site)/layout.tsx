@@ -9,7 +9,7 @@ import { Preloader } from "@/components/preloader/preloader";
 import { CommandPalette } from "@/components/command/command-palette";
 import { AskJJWidget } from "@/components/ask-jj/ask-jj-widget";
 import { PageViewTracker } from "@/components/analytics/page-view-tracker";
-import { getSiteSettings } from "@/lib/content";
+import { getSiteSettings, getShippedProjectCount } from "@/lib/content";
 
 /**
  * Cinematic public-site chrome: smooth scroll, ambient audio, header/footer,
@@ -24,6 +24,7 @@ export default async function SiteLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const settings = await getSiteSettings();
+  const shippedCount = await getShippedProjectCount();
 
   return (
     <MotionProvider>
@@ -31,7 +32,14 @@ export default async function SiteLayout({
         <SmoothScroll />
         <SiteHeader liveStatus={settings.liveStatus} liveUrl={settings.liveUrl} socials={settings.socials} />
         {children}
-        <SiteFooter socials={settings.socials} marketBias={settings.marketBias} />
+        <SiteFooter
+          socials={settings.socials}
+          marketBias={settings.marketBias}
+          liveStatus={settings.liveStatus}
+          liveUrl={settings.liveUrl}
+          availabilityStatus={settings.availabilityStatus}
+          shippedCount={shippedCount}
+        />
         {/* Intro/audio gate — lives OUTSIDE the route template so its
             fixed overlay isn't trapped by the template's stacking
             context. Self-gates to "/" + once per session. */}

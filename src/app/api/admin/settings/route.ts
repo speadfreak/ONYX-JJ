@@ -1,14 +1,13 @@
 import { db, ok, bad, asString, asBool, touched } from "@/lib/admin-api";
 import { requireAdmin } from "@/lib/auth";
-import { unlink } from "fs/promises";
-import path from "path";
 
 /**
  * Replace-cleanup (Phase 5 A4): when a settings asset field is swapped away
- * from a local /uploads/ file, delete that file + its Asset manifest row —
+ * from an uploaded file, delete its Asset manifest row (bytes included) —
  * unless it is still referenced by another settings field, a project cover,
  * a blog cover, or a testimonial photo. Bundled defaults (/images, /audio)
- * are never touched.
+ * are never touched. Uploads live in the DB (Asset.data), so cleanup is a
+ * row delete — no filesystem involvement.
  */
 const ASSET_FIELDS = ["profileImage", "ambientAudio", "heroVideo", "heroPoster"] as const;
 
@@ -19,7 +18,7 @@ async function cleanupReplacedAssets(oldValues: Record<AssetField, string>, newV
     const oldUrl = oldValues[field];
     const newUrl = newValues[field];
     if (!oldUrl || oldUrl === newUrl) continue;
-    if (!oldUrl.startsWith("/uploads/")) continue;
+    if (!oldUrl.startsWith("/uploads/") && !oldUrl.startsWith("/api/assets/")) continue;
 
     const stillReferenced =
       ASSET_FIELDS.some((f) => f !== field && newValues[f] === oldUrl) ||
@@ -28,11 +27,6 @@ async function cleanupReplacedAssets(oldValues: Record<AssetField, string>, newV
       (await db.testimonial.count({ where: { photo: oldUrl } })) > 0;
     if (stillReferenced) continue;
 
-    try {
-      await unlink(path.join(process.cwd(), "public", oldUrl));
-    } catch {
-      // File already gone (or uploaded pre-restore) — the manifest row still goes.
-    }
     await db.asset.deleteMany({ where: { url: oldUrl } });
   }
 }
@@ -67,6 +61,9 @@ export async function PUT(req: Request) {
   }
   // v3 — "Current Market Bias" note shown next to the Market Pulse widget
   if ("marketBias" in body) data.marketBias = asString(body.marketBias).slice(0, 200);
+
+  // Footer trust chip — editable availability line
+  if ("availabilityStatus" in body) data.availabilityStatus = asString(body.availabilityStatus).slice(0, 120);
 
   // Socials — structured validation: [{ label, platform, href, note }]
   if ("socials" in body && Array.isArray(body.socials)) {

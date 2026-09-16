@@ -29,6 +29,8 @@ export interface SiteSettings {
   nowUpdatedAt: string | null;
   /** v3 — personally-curated market note shown near the Market Pulse widget */
   marketBias: string;
+  /** Footer trust chip — availability line editable from /admin/settings */
+  availabilityStatus: string;
 }
 
 export interface HomeContentData {
@@ -125,6 +127,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
   nowContent: "",
   nowUpdatedAt: null,
   marketBias: "Watching USD strength into the next CPI print — biased for pullbacks into London session.",
+  availabilityStatus: "Available for select projects",
 };
 
 // ── Mappers ─────────────────────────────────────────────────────────────
@@ -258,9 +261,19 @@ export async function getSiteSettings(): Promise<SiteSettings> {
       nowContent: row.nowContent,
       nowUpdatedAt: row.nowUpdatedAt ? row.nowUpdatedAt.toISOString() : null,
       marketBias: row.marketBias ?? "",
+      availabilityStatus: row.availabilityStatus ?? "",
     };
   } catch {
     return DEFAULT_SETTINGS;
+  }
+}
+
+/** Footer trust chip: number of published case studies (never hardcoded). */
+export async function getShippedProjectCount(): Promise<number> {
+  try {
+    return await db.project.count({ where: { published: true } });
+  } catch {
+    return 0;
   }
 }
 
