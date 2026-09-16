@@ -78,10 +78,18 @@ export function AudioProvider({
   const start = useCallback(() => {
     if (!enabledRef.current || howlRef.current || startingRef.current) return;
     startingRef.current = true;
+    /* Howler sniffs the codec from the URL extension and silently refuses
+       sources it can't parse ("No file extension was found…"). DB-backed
+       tracks used to ship extension-less (/api/assets/<uuid>) and therefore
+       NEVER played — derive the format explicitly whenever the URL carries
+       one, so /api/assets/<uuid>/track.mp3 and /audio/theme.mp3 both load. */
+    const extMatch = src.split(/[?#]/)[0].match(/\.([a-z0-9]{2,5})$/i);
+    const format = extMatch ? [extMatch[1]!.toLowerCase()] : undefined;
     import("howler")
       .then(({ Howl }) => {
         const howl = new Howl({
           src: [src],
+          ...(format ? { format } : {}),
           loop: true,
           volume: 0,
           html5: true,
@@ -93,8 +101,18 @@ export function AudioProvider({
           setAudioAvailable(true);
           setStarted(true);
           howl.play();
-          howl.fade(0, TARGET_VOLUME, 2500); // smooth 2.5s fade-in
-          if (mutedRef.current) howl.mute(true);
+          /* ⚠️ HOWLER DEADLOCK (Task 11 — the real "ambient audio never
+             plays" bug): with html5 audio, play() holds _playLock until its
+             promise resolves, and ANY fade()/mute() issued in that window
+             is pushed onto the internal action queue — whose drain only
+             ever fires for the matching event name ('play' ≠ 'fade'), so a
+             fade called synchronously after play() is queued FOREVER and
+             the track loops at volume 0. Waiting for the 'play' emit means
+             the lock has already released and the fade runs immediately. */
+          howl.once("play", () => {
+            howl.fade(0, TARGET_VOLUME, 2500); // smooth 2.5s fade-in
+            if (mutedRef.current) howl.mute(true);
+          });
         });
         howl.once("loaderror", () => {
           startingRef.current = false;
@@ -112,6 +130,22 @@ export function AudioProvider({
         setAudioAvailable(false);
       });
   }, [setAudioAvailable, src]);
+
+  /* Track swap (Task 11): if the managed ambient URL changes while a track
+     is already playing (settings replaced mid-session), unload the old loop
+     and start the new one — no stale track looping until the next reload.
+     Autoplay stays allowed: playback already began from the entry gesture. */
+  const srcRef = useRef(src);
+  useEffect(() => {
+    if (srcRef.current === src) return;
+    const wasStarted = started || !!howlRef.current;
+    srcRef.current = src;
+    if (howlRef.current) {
+      howlRef.current.unload();
+      howlRef.current = null;
+    }
+    if (wasStarted && enabledRef.current) start();
+  }, [src, start]);
 
   const toggleMute = useCallback(() => {
     if (!enabledRef.current) return;

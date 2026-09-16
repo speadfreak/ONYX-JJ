@@ -9,7 +9,10 @@ const ACCEPT: Record<string, string> = {
   cover: "image/jpeg,image/png,image/webp",
   photo: "image/jpeg,image/png,image/webp",
   poster: "image/jpeg,image/png,image/webp",
-  ambient: "audio/mpeg",
+  /* Browsers label the same .mp3 "audio/mpeg" OR "audio/mp3" by platform,
+     and m4a/wav exports are common — without these the file picker greys
+     JJ's tracks out and replacement "does nothing". */
+  ambient: "audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/aac,audio/wav,audio/x-wav,.mp3,.m4a,.wav",
   video: "video/mp4,video/webm",
 };
 
@@ -193,12 +196,12 @@ export function AssetUpload({
         <p className="text-[11px] leading-snug text-muted-foreground">
           {onUploaded
             ? kind === "ambient"
-              ? "mp3 · max 10MB · applies instantly"
+              ? "mp3 / m4a / wav · max 10MB · applies instantly"
               : kind === "video"
                 ? "mp4 / webm · max 15MB · applies instantly"
                 : "jpg / png / webp · max 5MB · applies instantly"
             : kind === "ambient"
-              ? "mp3 · max 10MB"
+              ? "mp3 / m4a / wav · max 10MB"
               : kind === "video"
                 ? "mp4 / webm · max 15MB"
                 : "jpg / png / webp · max 5MB"}

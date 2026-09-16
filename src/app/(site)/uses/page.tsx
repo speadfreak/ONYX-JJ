@@ -1,4 +1,8 @@
 import type { Metadata } from "next";
+
+/* Render per-request so the shared layout always carries the CURRENT ambient
+   audio URL + LIVE badge (see (site)/layout.tsx). */
+export const dynamic = "force-dynamic";
 import { PageHero } from "@/components/motion/page-hero";
 import { UsesSections } from "@/components/uses/uses-sections";
 

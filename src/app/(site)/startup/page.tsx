@@ -1,4 +1,8 @@
 import type { Metadata } from "next";
+
+/* Render per-request so the shared layout always carries the CURRENT ambient
+   audio URL + LIVE badge (see (site)/layout.tsx). */
+export const dynamic = "force-dynamic";
 import { MissionHero } from "@/components/startup/mission-hero";
 import { Pillars } from "@/components/startup/pillars";
 import { Headed } from "@/components/startup/headed";
