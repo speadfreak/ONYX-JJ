@@ -71,3 +71,6 @@ server.log
 
 # Internal build log (contains sandbox-internal notes; not for the public repo)
 /worklog.md
+
+# Generated dual-provider Prisma clients for the one-off migration script
+/generated/

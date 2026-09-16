@@ -1,0 +1,230 @@
+// JJ ONYX v2 — dynamic content schema.
+// Every public-facing content type is admin-editable from /admin/* and is
+// read by the public pages at request time (no redeploy for content changes).
+// NOTE: SQLite has no array/object column types — JSON is stored as strings
+// and (de)serialized in src/lib/content.ts.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../generated/pg-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Projects / case studies ────────────────────────────────────────────
+model Project {
+  id       String @id @default(cuid())
+  slug     String @unique
+  title    String
+  amharic  String?
+  tagline  String
+  hook     String
+  // JSON string[] of ProjectTag ("Fullstack" | "AI" | "Real-Time" | "Trading")
+  tags     String @default("[]")
+  year     String
+  role     String
+  // Cover image URL (public path or /uploads/... from the asset manager)
+  image    String
+  // "gold" | "mint" | "ice"
+  accent   String @default("gold")
+  // JSON [{ value: string, label: string }]
+  stats    String @default("[]")
+
+  // Structured case-study sections (ordered). Each: { title, body (markdown),
+  // demos: string[] ("orderFlow"|"ticket"|"broadcast"|"cot"|"tutor"|"checkin"|"stack"),
+  // statBar?: { accent, stats: [{value,label}] } }.
+  // Markdown is rendered via react-markdown (raw HTML escaped) — XSS-safe.
+  // Demo/mockup components stay code-owned and are injected by id.
+  sections String?
+  // JSON string[] of stack chips (rendered when a section includes the "stack" demo)
+  stack    String?
+
+  published Boolean @default(true)
+  order     Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ── Home page content (singleton, id = "home") ─────────────────────────
+model HomeContent {
+  id            String  @id @default("home")
+  kicker        String  @default("JJ ONYX — Est. Addis Ababa")
+  headlineLine1 String  @default("JOSEPH")
+  headlineLine2 String  @default("JAMES")
+  // JSON string[] — rotating role tags under the headline
+  roles         String  @default("[]")
+  subheadline   String  @default("")
+  ctaPrimaryLabel   String @default("Enter the story")
+  ctaPrimaryHref    String @default("/about")
+  ctaSecondaryLabel String @default("Start a project")
+  ctaSecondaryHref  String @default("/contact")
+  // JSON [{ to: number, suffix?: string, label: string }]
+  stats         String  @default("[]")
+  featuredHeading    String @default("Systems that run real operations.")
+  featuredSubheading String @default("Four production builds — a restaurant, a school, a trading desk, a classroom. Every one shipped, every one real.")
+  updatedAt     DateTime @updatedAt
+}
+
+// ── Blog / Journal ─────────────────────────────────────────────────────
+model BlogPost {
+  id             String    @id @default(cuid())
+  slug           String    @unique
+  title          String
+  // "Dev Log" | "Trading Insight" | "Startup Notes"
+  category       String    @default("Dev Log")
+  excerpt        String    @default("")
+  // Markdown — rendered with react-markdown (raw HTML escaped)
+  content        String
+  coverImage     String?
+  readingMinutes Int       @default(4)
+  published      Boolean   @default(false)
+  publishedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+// ── Testimonials ───────────────────────────────────────────────────────
+model Testimonial {
+  id        String   @id @default(cuid())
+  name      String
+  role      String
+  quote     String
+  photo     String?
+  order     Int      @default(0)
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ── Contact inbox ──────────────────────────────────────────────────────
+model Message {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  message   String
+  read      Boolean  @default(false)
+  archived  Boolean  @default(false)
+  ip        String?
+  createdAt DateTime @default(now())
+}
+
+// ── Site settings (singleton, id = "site") ─────────────────────────────
+model SiteSetting {
+  id           String   @id @default("site")
+  // Real LIVE streaming badge (Home hero + nav pulse when true)
+  liveStatus   Boolean  @default(false)
+  liveUrl      String   @default("")
+  // Feature toggles
+  audioEnabled Boolean  @default(true)
+  videoEnabled Boolean  @default(true)
+  // JSON [{ label, platform, href, note }]
+  socials      String   @default("[]")
+  // Managed asset URLs (asset manager uploads)
+  profileImage String   @default("/images/jj-profile.jpg")
+  ambientAudio String   @default("/audio/ambient-theme.mp3")
+  heroVideo    String   @default("")
+  heroPoster   String   @default("/images/hero-bg.jpg")
+  // /now page content (markdown) — editable in seconds from settings
+  nowContent   String   @default("")
+  nowUpdatedAt DateTime?
+  // v3 — "Current Market Bias": a short personally-curated note (e.g.
+  // "Watching USD strength into CPI this week") shown near the Market Pulse
+  // widget so the live data feels hand-picked, not automated.
+  marketBias   String    @default("")
+  updatedAt    DateTime  @updatedAt
+}
+
+// ── Uploaded assets manifest ───────────────────────────────────────────
+model Asset {
+  id        String   @id @default(cuid())
+  kind      String // profile | ambient | video | poster | cover | photo
+  filename  String
+  url       String
+  mime      String
+  size      Int
+  createdAt DateTime @default(now())
+}
+
+// ── Admin activity feed ────────────────────────────────────────────────
+model ActivityLog {
+  id        String   @id @default(cuid())
+  action    String
+  detail    String?
+  createdAt DateTime @default(now())
+}
+
+// ── Login rate limiting (5 failures / 15 min / IP) ─────────────────────
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  ip        String
+  success   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([ip, createdAt])
+}
+
+// ── Anonymous usage analytics (self-hosted, no PII) ────────────────────
+// Written by POST /api/track (pageview | palette | gem events).
+model EventLog {
+  id        String   @id @default(cuid())
+  type      String
+  // pageview: pathname (e.g. "/work/jj-nexus-pro")
+  route     String?
+  // pageview: referrer CLASS only (direct | search | social | other) — never the URL
+  referrer  String?
+  // palette: action id (e.g. "nav:/work", "copy-email", "toggle-sound")
+  action    String?
+  createdAt DateTime @default(now())
+
+  @@index([type, createdAt])
+  @@index([route, createdAt])
+}
+
+// ── "Ask JJ" AI assistant chats (public widget, Task 3-5) ──────────────
+// No PII — question + classified topic; answer kept for follow-up context.
+model AiChat {
+  id        String   @id @default(cuid())
+  question  String
+  topic     String
+  answer    String?
+  createdAt DateTime @default(now())
+
+  @@index([topic, createdAt])
+}
+
+// ── Multi-admin accounts (v4 Task A) ───────────────────────────────────
+// Replaces the env-var single-admin credential. Exactly one account has
+// role="owner" — it can never be deleted, disabled, or demoted (guarded in
+// every mutation API), which guarantees JJ can never be locked out.
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique // stored lowercase
+  // bcrypt hash. Null while status="invited" (password not set yet).
+  passwordHash String?
+  name         String
+  // "owner" | "admin" (role field built now for future extensibility)
+  role         String    @default("admin")
+  // "active" | "invited" | "disabled"
+  status       String    @default("active")
+  // Bumped on disable / email change / password change — JWTs issued before
+  // the bump stop verifying at requireAdmin() → instant session invalidation.
+  sessionEpoch Int       @default(0)
+
+  // Single-use invite: only the SHA-256 hash of the token is stored; the raw
+  // token lives solely in the invite link shown once to the inviting owner.
+  inviteTokenHash String?
+  inviteExpiresAt DateTime?
+
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Who invited this admin (nullable self-reference)
+  invitedById String?
+  invitedBy   AdminUser?  @relation("AdminInvites", fields: [invitedById], references: [id], onDelete: SetNull)
+  invited     AdminUser[] @relation("AdminInvites")
+}
