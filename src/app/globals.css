@@ -1,0 +1,515 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+  --font-display: var(--font-fraunces), Georgia, "Times New Roman", serif;
+  --font-ethiopic: var(--font-noto-ethiopic), "Nyala", sans-serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* ── JJ ONYX palette (Tailwind 4 theme extensions) ───────────────────── */
+@theme {
+  --color-onyx-950: #0a0a0f;
+  --color-onyx-900: #111116;
+  --color-onyx-850: #15151c;
+  --color-onyx-800: #1a1a22;
+  --color-onyx-700: #26262f;
+  --color-gold: #d4a857;
+  --color-gold-light: #e9cb86;
+  --color-gold-dark: #a67f35;
+  --color-mint: #00e5a0;
+  --color-ice: #22d3ee;
+}
+
+:root {
+  --radius: 0.5rem;
+  /* JJ ONYX — the site is dark-only; obsidian values live in :root */
+  --background: #0a0a0f;
+  --foreground: #f2efe8;
+  --card: #111116;
+  --card-foreground: #f2efe8;
+  --popover: #14141b;
+  --popover-foreground: #f2efe8;
+  --primary: #d4a857;
+  --primary-foreground: #0a0a0f;
+  --secondary: #1a1a22;
+  --secondary-foreground: #f2efe8;
+  --muted: #16161d;
+  --muted-foreground: #9b9ba7;
+  --accent: #26262f;
+  --accent-foreground: #e9cb86;
+  --destructive: #e5484d;
+  --border: rgba(242, 239, 232, 0.08);
+  --input: rgba(242, 239, 232, 0.12);
+  --ring: #d4a857;
+  --chart-1: #d4a857;
+  --chart-2: #00e5a0;
+  --chart-3: #22d3ee;
+  --chart-4: #a67f35;
+  --chart-5: #e5484d;
+  --sidebar: #111116;
+  --sidebar-foreground: #f2efe8;
+  --sidebar-primary: #d4a857;
+  --sidebar-primary-foreground: #0a0a0f;
+  --sidebar-accent: #1a1a22;
+  --sidebar-accent-foreground: #f2efe8;
+  --sidebar-border: rgba(242, 239, 232, 0.08);
+  --sidebar-ring: #d4a857;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+  body {
+    @apply bg-onyx-950 text-foreground antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+  ::selection {
+    background: rgba(212, 168, 87, 0.28);
+    color: #fff8e7;
+  }
+  /* Refined onyx scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0a0a0f;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #26262f;
+    border-radius: 8px;
+    border: 2px solid #0a0a0f;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(212, 168, 87, 0.45);
+  }
+  /* Hide native cursor when the custom cursor is active (fine pointers only) */
+  .jj-cursor-on,
+  .jj-cursor-on * {
+    cursor: none !important;
+  }
+}
+
+/* ── Lenis smooth-scroll required styles ─────────────────────────────── */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* ── Film grain overlay (animated noise so black never reads flat) ───── */
+.jj-grain {
+  position: fixed;
+  inset: -100%;
+  z-index: 80;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  animation: jj-grain-shift 9s steps(10) infinite;
+  will-change: transform;
+}
+@keyframes jj-grain-shift {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-3%, -6%); }
+  20% { transform: translate(-8%, 3%); }
+  30% { transform: translate(5%, -8%); }
+  40% { transform: translate(-3%, 9%); }
+  50% { transform: translate(-8%, -4%); }
+  60% { transform: translate(7%, 0%); }
+  70% { transform: translate(0%, 7%); }
+  80% { transform: translate(2%, 10%); }
+  90% { transform: translate(-7%, 4%); }
+}
+
+/* ── Ethiopian/Nigerian textile-inspired abstract linework ───────────── */
+.jj-textile {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23D4A857' stroke-opacity='0.14' stroke-width='1'%3E%3Cpath d='M60 8 112 60 60 112 8 60Z'/%3E%3Cpath d='M60 30 90 60 60 90 30 60Z'/%3E%3Cpath d='M0 60 12 48M0 60 12 72M120 60 108 48M120 60 108 72M60 0 48 12M60 0 72 12M60 120 48 108M60 120 72 108'/%3E%3Ccircle cx='60' cy='60' r='3'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 120px 120px;
+}
+
+/* ── Animated gradient mesh blobs ("living background") ──────────────── */
+.jj-mesh-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: 0.12;
+  will-change: transform;
+  animation: jj-mesh-drift 24s ease-in-out infinite alternate;
+}
+.jj-mesh-a {
+  top: -15%;
+  left: -10%;
+  width: 55%;
+  height: 60%;
+  background: radial-gradient(closest-side, #d4a857, transparent);
+}
+.jj-mesh-b {
+  bottom: -25%;
+  right: -12%;
+  width: 50%;
+  height: 70%;
+  background: radial-gradient(closest-side, #a67f35, transparent);
+  animation-delay: -8s;
+  animation-duration: 30s;
+}
+.jj-mesh-c {
+  top: 20%;
+  right: 25%;
+  width: 34%;
+  height: 40%;
+  background: radial-gradient(closest-side, #00e5a0, transparent);
+  opacity: 0.07;
+  animation-delay: -16s;
+  animation-duration: 36s;
+}
+@keyframes jj-mesh-drift {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(6%, 8%, 0) scale(1.12); }
+  100% { transform: translate3d(-5%, -6%, 0) scale(0.94); }
+}
+
+/* ── Signature utilities ─────────────────────────────────────────────── */
+/* Polished gold gradient text */
+.gold-text {
+  background: linear-gradient(105deg, #e9cb86 0%, #d4a857 45%, #a67f35 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+/* Faceted clip paths — the onyx-cut motif */
+.facet-clip {
+  clip-path: polygon(14% 0, 100% 0, 100% 86%, 86% 100%, 0 100%, 0 14%);
+}
+.facet-clip-sm {
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+}
+.glass-panel {
+  background: rgba(17, 17, 22, 0.6);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  border: 1px solid rgba(242, 239, 232, 0.07);
+}
+.glow-gold {
+  box-shadow: 0 0 42px -8px rgba(212, 168, 87, 0.35);
+}
+.glow-gold-sm {
+  box-shadow: 0 0 24px -6px rgba(212, 168, 87, 0.3);
+}
+.ring-gold-focus:focus-visible {
+  outline: none;
+  border-color: rgba(212, 168, 87, 0.7);
+  box-shadow: 0 0 0 1px rgba(212, 168, 87, 0.7), 0 0 24px -4px rgba(212, 168, 87, 0.45);
+}
+
+/* ── Ambient motion keyframes ────────────────────────────────────────── */
+@keyframes jj-float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+.animate-float-y {
+  animation: jj-float-y 7s ease-in-out infinite;
+}
+@keyframes jj-spin-slower {
+  to { transform: rotate(360deg); }
+}
+.animate-spin-slower {
+  animation: jj-spin-slower 16s linear infinite;
+}
+@keyframes jj-pulse-soft {
+  0%, 100% { opacity: 0.45; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.04); }
+}
+.animate-pulse-soft {
+  animation: jj-pulse-soft 3.2s ease-in-out infinite;
+}
+@keyframes jj-eq {
+  0%, 100% { transform: scaleY(0.35); }
+  50% { transform: scaleY(1); }
+}
+.eq-bar {
+  transform-origin: bottom;
+  animation: jj-eq 0.9s ease-in-out infinite;
+}
+@keyframes jj-caret {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.animate-caret {
+  animation: jj-caret 1s steps(1) infinite;
+}
+@keyframes jj-drift-particle {
+  0% { transform: translate3d(0, 0, 0); opacity: 0; }
+  12% { opacity: var(--p-opacity, 0.5); }
+  88% { opacity: var(--p-opacity, 0.5); }
+  100% { transform: translate3d(var(--p-x, 30px), var(--p-y, -140px), 0); opacity: 0; }
+}
+.particle {
+  animation: jj-drift-particle var(--p-dur, 18s) linear infinite;
+  animation-delay: var(--p-delay, 0s);
+}
+@keyframes jj-shimmer-x {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer-line {
+  background: linear-gradient(90deg, transparent, rgba(212, 168, 87, 0.7), transparent);
+  background-size: 200% 100%;
+  animation: jj-shimmer-x 3.5s linear infinite;
+}
+
+/* ── Reduced motion: strip all ambient/decorative animation ──────────── */
+@media (prefers-reduced-motion: reduce) {
+  .jj-grain,
+  .jj-mesh-blob,
+  .animate-float-y,
+  .animate-spin-slower,
+  .animate-pulse-soft,
+  .eq-bar,
+  .particle,
+  .shimmer-line {
+    animation: none !important;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* ── prose-onyx: styled markdown for case studies, blog & /now ─────────── */
+.prose-onyx {
+  --cq: rgba(212, 168, 87, 0.6);
+  max-width: 48rem;
+}
+.prose-onyx > * + * {
+  margin-top: 1.15rem;
+}
+.prose-onyx p {
+  color: var(--color-muted-foreground);
+  line-height: 1.75;
+  font-size: 0.9375rem;
+}
+@media (min-width: 640px) {
+  .prose-onyx p {
+    font-size: 1rem;
+  }
+}
+.prose-onyx h2 {
+  font-family: var(--font-fraunces), serif;
+  font-size: 1.6rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-foreground);
+  margin-top: 2.25rem;
+}
+.prose-onyx h3 {
+  font-family: var(--font-fraunces), serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-foreground);
+  margin-top: 1.75rem;
+}
+.prose-onyx strong {
+  color: var(--color-foreground);
+  font-weight: 600;
+}
+.prose-onyx em {
+  color: var(--color-gold);
+  font-style: italic;
+}
+.prose-onyx ul,
+.prose-onyx ol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding-left: 1.1rem;
+  color: var(--color-muted-foreground);
+  line-height: 1.7;
+  font-size: 0.9375rem;
+}
+@media (min-width: 640px) {
+  .prose-onyx ul,
+  .prose-onyx ol {
+    font-size: 1rem;
+  }
+}
+.prose-onyx ul {
+  list-style: none;
+  padding-left: 0.2rem;
+}
+.prose-onyx ul li {
+  position: relative;
+  padding-left: 1.4rem;
+}
+.prose-onyx ul li::before {
+  content: "";
+  position: absolute;
+  left: 0.15rem;
+  top: 0.62em;
+  width: 0.45rem;
+  height: 0.45rem;
+  transform: rotate(45deg);
+  background: color-mix(in srgb, var(--color-gold) 55%, transparent);
+}
+.prose-onyx ol {
+  list-style: decimal;
+}
+.prose-onyx ol li::marker {
+  color: var(--color-gold);
+  font-family: var(--font-jetbrains), monospace;
+  font-size: 0.85em;
+}
+.prose-onyx blockquote {
+  border-left: 2px solid var(--cq);
+  padding-left: 1.25rem;
+  font-family: var(--font-fraunces), serif;
+  font-style: italic;
+  font-size: 1.15rem;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.88);
+}
+@media (min-width: 640px) {
+  .prose-onyx blockquote {
+    font-size: 1.3rem;
+  }
+}
+.prose-onyx a {
+  color: var(--color-gold);
+  text-decoration: underline;
+  text-decoration-color: rgba(212, 168, 87, 0.35);
+  text-underline-offset: 4px;
+  transition: text-decoration-color 0.3s;
+}
+.prose-onyx a:hover {
+  text-decoration-color: var(--color-gold);
+}
+.prose-onyx code {
+  font-family: var(--font-jetbrains), monospace;
+  font-size: 0.85em;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.375rem;
+  padding: 0.1rem 0.4rem;
+  color: var(--color-gold-light);
+}
+.prose-onyx hr {
+  border: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(212, 168, 87, 0.35), transparent);
+  margin: 2rem 0;
+}
+/* Larger reading variant for the /now page */
+.prose-onyx-lg > * + * { margin-top: 1.35rem; }
+.prose-onyx-lg p { font-size: 1rem; line-height: 1.8; }
+@media (min-width: 640px) {
+  .prose-onyx-lg p { font-size: 1.075rem; }
+}
+.prose-onyx-lg h2 { font-size: 1.8rem; }
+.prose-onyx-lg ul, .prose-onyx-lg ol { font-size: 1rem; }
+
+/* ── Session accent themes (command palette toggle + gem secret) ─────── */
+/* Mint veil — emerald takes over as the primary accent */
+html[data-accent="mint"] {
+  --color-gold: #00e5a0;
+  --color-gold-light: #7dffd2;
+  --color-gold-dark: #00b47f;
+  --primary: #00e5a0;
+  --ring: #00e5a0;
+}
+html[data-accent="mint"] .gold-text {
+  background: linear-gradient(105deg, #7dffd2 0%, #00e5a0 45%, #00b47f 100%);
+}
+html[data-accent="mint"] .glow-gold {
+  box-shadow: 0 0 42px -8px rgba(0, 229, 160, 0.35);
+}
+html[data-accent="mint"] .glow-gold-sm {
+  box-shadow: 0 0 24px -6px rgba(0, 229, 160, 0.3);
+}
+
+/* Secret "prism" accent — gold ⇄ mint breathing (gem reward, session-only).
+   Animating a registered custom property; falls back gracefully to gold. */
+@property --jj-accent-mix {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+html[data-accent="prism"] {
+  --jj-accent-mix: 0;
+  animation: jj-prism 14s ease-in-out infinite;
+  --color-gold: color-mix(in srgb, #d4a857 calc((1 - var(--jj-accent-mix)) * 100%), #00e5a0);
+  --color-gold-light: color-mix(in srgb, #e9cb86 calc((1 - var(--jj-accent-mix)) * 100%), #7dffd2);
+  --color-gold-dark: color-mix(in srgb, #a67f35 calc((1 - var(--jj-accent-mix)) * 100%), #00b47f);
+  --primary: var(--color-gold);
+  --ring: var(--color-gold);
+}
+@keyframes jj-prism {
+  0%, 100% { --jj-accent-mix: 0; }
+  50% { --jj-accent-mix: 1; }
+}
+html[data-accent="prism"] .gold-text {
+  background: linear-gradient(105deg,
+    color-mix(in srgb, #e9cb86 calc((1 - var(--jj-accent-mix)) * 100%), #7dffd2) 0%,
+    color-mix(in srgb, #d4a857 calc((1 - var(--jj-accent-mix)) * 100%), #00e5a0) 45%,
+    color-mix(in srgb, #a67f35 calc((1 - var(--jj-accent-mix)) * 100%), #00b47f) 100%);
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-accent="prism"] {
+    animation: none;
+    --jj-accent-mix: 0.5;
+  }
+  .jj-marquee-hover .animate-jj-marquee,
+  .animate-jj-marquee {
+    animation: none;
+  }
+}
