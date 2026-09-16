@@ -3,7 +3,7 @@
 # JJ ONYX — GitHub push helper (env-var auth; token is NEVER stored).
 #
 # Usage:
-#   GITHUB_REPO="your-username/jj-onyx" \
+#   GITHUB_REPO="your-username/jj-onyx" GITHUB_USERNAME="your-github-username" \
 #   GITHUB_TOKEN="github_pat_..." \
 #   bash scripts/github-push.sh
 #
@@ -15,13 +15,16 @@
 set -euo pipefail
 
 : "${GITHUB_REPO:?Set GITHUB_REPO, e.g. your-username/jj-onyx}"
-: "${GITHUB_TOKEN:?Set GITHUB_TOKEN (fine-grained PAT with Contents:write)}"
+: "${GITHUB_TOKEN:?Set GITHUB_TOKEN (PAT with Contents:write)}"
+GITHUB_USERNAME="${GITHUB_USERNAME:-x-access-token}"
 
 git remote remove origin 2>/dev/null || true
 git remote add origin "https://github.com/${GITHUB_REPO}.git"
 
 echo "→ Pushing main to https://github.com/${GITHUB_REPO}.git (token not persisted)…"
-git -c http.extraheader="AUTHORIZATION: bearer ${GITHUB_TOKEN}" push -u origin main
+# GitHub classic PATs require BASIC auth for git-over-HTTPS (bearer is rejected).
+B64=$(printf '%s:%s' "${GITHUB_USERNAME:-x-access-token}" "${GITHUB_TOKEN}" | base64 | tr -d '\n')
+git -c http.extraheader="AUTHORIZATION: basic ${B64}" push -u origin main
 
 echo "✓ Pushed. Verify: https://github.com/${GITHUB_REPO}"
 echo "  (The token was used for this invocation only — check .git/config to confirm.)"
