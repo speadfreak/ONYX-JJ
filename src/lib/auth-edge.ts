@@ -16,6 +16,24 @@ import { jwtVerify } from "jose";
  */
 export const SESSION_COOKIE = "jj_admin_session";
 
+/**
+ * Session signing secret — explicit env first, deterministic fallback second.
+ *
+ * The fallback exists so a missing/short ADMIN_SESSION_SECRET on the host can
+ * NEVER lock the owner out of a single-admin site (it once silently killed
+ * every existing session AND 500'd every fresh login — Task 13). Derived
+ * purely from stable server-side env material with string ops only, so the
+ * EXACT same value is computable in the Node runtime (route handlers) and the
+ * edge runtime (middleware) — no node:crypto, no async WebCrypto.
+ */
+export function sessionSecret(): string {
+  const explicit = process.env.ADMIN_SESSION_SECRET;
+  if (explicit && explicit.length >= 32) return explicit;
+  const derived = `onyx-session::${process.env.DATABASE_URL ?? ""}::${process.env.ADMIN_EMAIL ?? ""}::v1`;
+  // Guarantee ≥32 chars even if the env material were (nearly) empty.
+  return derived.length >= 32 ? derived : `${derived}::${"onyx-fallback-pad".repeat(3)}`;
+}
+
 export type AdminRole = "owner" | "admin";
 
 export interface AdminSession {
@@ -40,8 +58,7 @@ export async function verifySessionEdge(token: string | undefined | null): Promi
 /** Verify signature + v2 shape. Epoch/status re-validation happens in auth.ts. */
 export async function verifyClaimsEdge(token: string | undefined | null): Promise<SessionClaims | null> {
   if (!token) return null;
-  const secret = process.env.ADMIN_SESSION_SECRET;
-  if (!secret || secret.length < 32) return null;
+  const secret = sessionSecret();
   try {
     const { payload } = await jwtVerify(token, new TextEncoder().encode(secret));
     if (payload.ver !== 2) return null; // pre-v4 token — force re-login

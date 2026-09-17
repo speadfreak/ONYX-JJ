@@ -13,6 +13,7 @@ import { SESSION_COOKIE, verifySessionEdge } from "@/lib/auth-edge";
 
 const LOGIN_PATH = "/admin/login";
 const LOGIN_API = "/api/admin/login";
+const HEALTH_API = "/api/admin/health";
 // Pre-auth invite endpoints + the public invite-setup page (token IS the secret).
 const INVITE_API_PREFIX = "/api/admin/invite/";
 const INVITE_PAGE_PREFIX = "/admin/invite/";
@@ -22,6 +23,9 @@ export async function middleware(req: NextRequest) {
 
   // The single public door — handled by its own route + rate limiter.
   if (pathname === LOGIN_API) return NextResponse.next();
+
+  // Valueless login-stack diagnostics (booleans/counts only).
+  if (pathname === HEALTH_API) return NextResponse.next();
 
   // Invite endpoints are used BEFORE an account has a session (new admins
   // validating + accepting their one-time invite link).

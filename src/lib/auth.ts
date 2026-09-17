@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import {
   SESSION_COOKIE,
+  sessionSecret,
   verifyClaimsEdge,
   verifySessionEdge,
   type AdminRole,
@@ -26,10 +27,22 @@ import {
 
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days
 
+let warnedFallback = false;
+
 function secretKey(): Uint8Array {
-  const secret = process.env.ADMIN_SESSION_SECRET;
-  if (!secret || secret.length < 32) {
-    throw new Error("ADMIN_SESSION_SECRET is missing or too short (min 32 chars).");
+  const secret = sessionSecret();
+  const explicit = process.env.ADMIN_SESSION_SECRET;
+  if (!explicit || explicit.length < 32) {
+    // Deterministic fallback (see sessionSecret in auth-edge) — login keeps
+    // working even if the host lost the env var. Loud, once per process.
+    if (!warnedFallback) {
+      warnedFallback = true;
+      console.warn(
+        "[auth] ADMIN_SESSION_SECRET is missing or shorter than 32 chars — " +
+          "using a deterministic server-derived fallback secret. Set " +
+          "ADMIN_SESSION_SECRET (32+ random chars) to supersede it."
+      );
+    }
   }
   return new TextEncoder().encode(secret);
 }
