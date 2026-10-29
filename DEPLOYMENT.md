@@ -215,13 +215,26 @@ packages later):
 ### Vercel project settings
 
 - Framework preset: **Next.js** (auto-detected). Node version: default (22) is fine.
-- Build command — either keep yours (`npm install --legacy-peer-deps && npx prisma db push && npm run build`) or the cleaner explicit form:
-  `npx prisma generate && npx prisma db push && npm run build`
-  (`prisma generate` is deterministic; `db push` no-ops when the schema is
-  already in sync and fails loudly if the DB has drift — data stays safe).
+- Build command — **MUST be DB-independent**:
+  `npm install --legacy-peer-deps && npx prisma generate && npm run build`
+  - `prisma generate` only reads `prisma/schema.prisma` (no network) and
+    regenerates the typed client — required because npm's install-scripts
+    allowlist gate skips `@prisma/client`'s postinstall hook.
+  - **Do NOT put `npx prisma db push` in the build command.** Schema push is a
+    one-time/migration-time operation (the layerbase schema is already in
+    sync), it MUTATES the production database on every deploy, and it makes
+    every build fail the moment the DB has a transient network blip — e.g.
+    2026-10-29 the build died with `P1001: Can't reach database server` while
+    the DB itself was up (verified by direct query seconds later). If you ever
+    change the schema, run `npx prisma db push` manually (locally, against
+    `DATABASE_URL`), never from CI.
+  - `next build` itself needs zero DB connectivity: every `(site)` page is
+    `force-dynamic`, there is no `generateStaticParams`/sitemap/manifest, and
+    all DB access lives in API route handlers executed at request time.
 - Environment variables (Project → Settings → Environment Variables):
   - `DATABASE_URL` — the **same** Postgres URL Render uses (layerbase). Both
-    platforms can run side-by-side against one database.
+    platforms can run side-by-side against one database. Not needed at build
+    time, but required at RUNTIME (the site is DB-backed).
   - `ADMIN_SESSION_SECRET` — 32+ random chars; use the **same value as Render**
     so sessions survive if traffic shifts between platforms.
   - `ADMIN_EMAIL` / `ADMIN_PASSWORD` — not needed (owner already migrated into

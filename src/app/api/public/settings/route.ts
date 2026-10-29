@@ -5,7 +5,12 @@ import { db } from "@/lib/db";
  * GET /api/public/settings — safe, public subset of site settings.
  * Consumed by the nav LIVE badge (polled ~30s), the audio gate, hero media.
  * Exposes ONLY booleans/URLs meant for visitors — never admin secrets.
+ *
+ * force-dynamic: polled per visitor; must never be statically cached at
+ * build time (and keeps CI builds DB-independent by construction).
  */
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const s = await db.siteSetting.findUnique({ where: { id: "site" } });
