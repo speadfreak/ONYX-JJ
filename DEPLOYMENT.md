@@ -190,3 +190,52 @@ curl -s -m 5 "http://0.0.0.0:${PORT:-10000}/api"   # expect {"message":"Hello, w
 - [x] `.env.example` documents every variable with placeholders
 - [x] `scripts/github-push.sh` authenticates via a per-invocation header — no token in URLs or config
 - [ ] **Your action:** generate fresh `ADMIN_SESSION_SECRET` + `ADMIN_PASSWORD` for production (step 4)
+
+---
+
+## Deploying to Vercel (optional, alongside or instead of Render)
+
+The repo builds on Vercel as a standard Next.js 16 project. Two things were
+fixed in the manifest to make that possible (keep them in mind if you add
+packages later):
+
+- **Build-critical packages must live in `dependencies`, not `devDependencies`.**
+  Vercel saw `bun.lock` and ran its install phase with `NODE_ENV=production`,
+  and bun skips devDependencies in production mode — which once broke the build
+  with `Failed to transpile "next.config.ts": Cannot find module 'typescript'`.
+  Moved into `dependencies`: `typescript`, `tailwindcss`, `@tailwindcss/postcss`,
+  `tw-animate-css`, `server-only` (plus `prisma` which was already there).
+  Anything the build itself needs (PostCSS plugins, CSS imports, TS config
+  transpile, `import "server-only"`) belongs in `dependencies` on this repo.
+- **The `build` script guards the standalone copy step**: Render needs
+  `.next/static` + `public/` copied into `.next/standalone/`; Vercel doesn't.
+  The script now only runs the copy `if [ -d .next/standalone ]`, so both
+  platforms share one script.
+
+### Vercel project settings
+
+- Framework preset: **Next.js** (auto-detected). Node version: default (22) is fine.
+- Build command — either keep yours (`npm install --legacy-peer-deps && npx prisma db push && npm run build`) or the cleaner explicit form:
+  `npx prisma generate && npx prisma db push && npm run build`
+  (`prisma generate` is deterministic; `db push` no-ops when the schema is
+  already in sync and fails loudly if the DB has drift — data stays safe).
+- Environment variables (Project → Settings → Environment Variables):
+  - `DATABASE_URL` — the **same** Postgres URL Render uses (layerbase). Both
+    platforms can run side-by-side against one database.
+  - `ADMIN_SESSION_SECRET` — 32+ random chars; use the **same value as Render**
+    so sessions survive if traffic shifts between platforms.
+  - `ADMIN_EMAIL` / `ADMIN_PASSWORD` — not needed (owner already migrated into
+    the AdminUser table; bootstrap no-ops).
+  - Do **not** set `INSECURE_COOKIES` (Vercel serves https; cookies stay secure).
+
+### Platform notes
+
+- `output: "standalone"` in next.config.ts is ignored by Vercel (harmless
+  warning) — it only matters for Render's standalone server.
+- The AI-powered routes (Ask JJ widget, AI Insights, portfolio regeneration)
+  use the z-ai SDK whose credentials exist only in the build sandbox. On
+  Vercel/Render they respond with their graceful "offline" fallbacks — every
+  other feature (auth, content, inbox, analytics, assets) is fully DB-backed
+  and works identically.
+- Redirect traffic: point the custom domain at whichever platform should serve
+  it; keep the other as a standby. Shut down the unused one when you're settled.
